@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -8,9 +9,12 @@ export const Route = createRootRoute({
 
 console.log({ api: import.meta.env.VITE_API })
 
+// Create a client
+const queryClient = new QueryClient()
+
 function RootComponent() {
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-50 h-16">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex items-center h-16">
@@ -47,6 +51,6 @@ function RootComponent() {
         <Outlet />
       </div>
       <TanStackRouterDevtools position="bottom-right" />
-    </>
+    </QueryClientProvider>
   )
 }

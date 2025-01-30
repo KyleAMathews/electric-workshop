@@ -14,9 +14,16 @@ export default $config({
     };
   },
   async run() {
+    console.log(Object.keys(process.env).filter(a => a.includes(`ELECTRIC`)))
     const api = new sst.cloudflare.Worker(`api`, {
       handler: `./src/api.ts`,
-      url: true
+      url: true,
+      environment: {
+        ELECTRIC_URL: `https://api.electric-sql.cloud`,
+        ELECTRIC_SOURCE_ID: process.env.ELECTRIC_SOURCE_ID,
+        ELECTRIC_SOURCE_SECRET: process.env.ELECTRIC_SOURCE_SECRET,
+        DATABASE_URL: process.env.DATABASE_URL,
+      }
     });
 
     const workshopApp = new sst.aws.StaticSite(`workshopApp`, {
