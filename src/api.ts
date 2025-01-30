@@ -27,6 +27,13 @@ const TodoSchema = z
   })
   .openapi("Todo");
 
+const TodoResponseSchema = z
+  .object({
+    todo: TodoSchema,
+    txid: z.number(),
+  })
+  .openapi("TodoResponse");
+
 const CreateTodoSchema = z
   .object({
     text: z.string().min(1),
@@ -68,7 +75,7 @@ app.openapi(
       200: {
         content: {
           "application/json": {
-            schema: TodoSchema,
+            schema: TodoResponseSchema,
           },
         },
         description: "Created todo",
@@ -89,13 +96,18 @@ app.openapi(
     const { text } = c.req.valid("json");
 
     try {
-      const [newTodo] = await sql`
-        INSERT INTO todos (text)
-        VALUES (${text})
-        RETURNING *
+      const [result] = await sql`
+        WITH new_todo AS (
+          INSERT INTO todos (text)
+          VALUES (${text})
+          RETURNING *
+        )
+        SELECT *, txid_current() as txid
+        FROM new_todo
       `;
 
-      return c.json(newTodo);
+      const { txid, ...todo } = result;
+      return c.json({ todo, txid });
     } catch (error) {
       return c.json({ message: "Failed to create todo" }, 400);
     }
@@ -123,7 +135,7 @@ app.openapi(
       200: {
         content: {
           "application/json": {
-            schema: TodoSchema,
+            schema: TodoResponseSchema,
           },
         },
         description: "Updated todo",
@@ -153,23 +165,78 @@ app.openapi(
     const { completed } = c.req.valid("json");
 
     try {
-      const [updatedTodo] = await sql`
-        UPDATE todos
-        SET completed = ${completed}
-        WHERE id = ${id}
-        RETURNING *
+      const [result] = await sql`
+        WITH updated_todo AS (
+          UPDATE todos
+          SET completed = ${completed}
+          WHERE id = ${id}
+          RETURNING *
+        )
+        SELECT *, txid_current() as txid
+        FROM updated_todo
       `;
 
-      if (!updatedTodo) {
+      if (!result) {
         return c.json({ message: "Todo not found" }, 404);
       }
 
-      return c.json(updatedTodo);
+      const { txid, ...todo } = result;
+      return c.json({ todo, txid });
     } catch (error) {
       return c.json({ message: "Failed to update todo" }, 400);
     }
   }
 );
+
+app.openapi(
+  createRoute({
+    method: "delete",
+    path: "/todos/{id}",
+    request: {
+      params: z.object({
+        id: z.string().transform((val) => parseInt(val, 10)),
+      }),
+    },
+    responses: {
+      200: {
+        description: "Deleted todo",
+      },
+      404: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "Todo not found",
+      },
+    },
+    tags: ["todos"],
+  }),
+  async (c) => {
+    const sql = neon(c.env.DATABASE_URL)
+    const { id } = c.req.valid("param")
+
+    try {
+      const [result] = await sql`
+        WITH deleted_todo AS (
+          DELETE FROM todos
+          WHERE id = ${id}
+          RETURNING *, txid_current() as txid
+        )
+        SELECT * FROM deleted_todo
+      `
+
+      if (!result) {
+        return c.json({ message: "Todo not found" }, 404)
+      }
+
+      const { txid } = result
+      return c.json({ txid })
+    } catch (error) {
+      return c.json({ message: "Failed to delete todo" }, 400)
+    }
+  }
+)
 
 // Add OpenAPI documentation
 app.doc("/", {
