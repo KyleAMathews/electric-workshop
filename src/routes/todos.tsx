@@ -258,12 +258,18 @@ function TodosComponent() {
     }
   })
 
-  const mergedTodos = Array.from(todosMap.values()).filter(todo => {
-    // Filter out todos being deleted
-    const isBeingDeleted = deleteTodoMutation.isPending &&
-      deleteTodoMutation.variables === todo.id
-    return !isBeingDeleted
-  }).filter(obj => Object.keys(obj).length > 0);
+  const mergedTodos = Array.from(todosMap.values())
+    .filter(todo => {
+      // Filter out todos being deleted
+      const isBeingDeleted = deleteTodoMutation.isPending &&
+        deleteTodoMutation.variables === todo.id
+      return !isBeingDeleted
+    })
+    .filter(obj => Object.keys(obj).length > 0)
+    .sort((a, b) => {
+      if (!a.created_at || !b.created_at) return 0;
+      return new Date(b.created_at).getTime() > new Date(a.created_at).getTime() ? -11 : 1;
+    });
 
   return (
     <div className="max-w-2xl">

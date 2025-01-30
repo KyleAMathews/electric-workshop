@@ -3,52 +3,82 @@ import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
+const API_ROOT = import.meta.env.VITE_API
+
+interface TableMetadata {
+  table_name: string
+  columns: Array<{
+    column_name: string
+    data_type: string
+    is_nullable: boolean
+    column_default: string | null
+    is_identity: boolean
+  }>
+}
+
 export const Route = createRootRoute({
   component: RootComponent,
+  loader: async () => {
+    const response = await fetch(`${API_ROOT}/tables`)
+    const { tables } = await response.json()
+    return { tables }
+  }
 })
-
-console.log({ api: import.meta.env.VITE_API })
 
 // Create a client
 const queryClient = new QueryClient()
 
 function RootComponent() {
+  const { tables } = Route.useLoaderData()
+
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-50 h-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center h-16">
-            <h1 className="text-xl font-bold">Electric Workshop</h1>
+      <div className="flex h-screen">
+        {/* Sidebar */}
+        <div className="w-64 bg-gray-100 border-r">
+          <div className="p-4">
+            <h2 className="text-lg font-semibold mb-4">Navigation</h2>
+            
+            <div className="space-y-2">
+              <Link
+                to="/"
+                className="block px-4 py-2 rounded hover:bg-gray-200"
+                activeProps={{ className: 'block px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600' }}
+              >
+                Home
+              </Link>
+              <Link
+                to="/todos"
+                className="block px-4 py-2 rounded hover:bg-gray-200"
+                activeProps={{ className: 'block px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600' }}
+              >
+                Todos
+              </Link>
+
+              <div className="mt-6">
+                <h3 className="px-4 text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">
+                  Tables
+                </h3>
+                {tables?.map((table: TableMetadata) => (
+                  <Link
+                    key={table.table_name}
+                    to="/table-editor/$tableName"
+                    params={{ tableName: table.table_name }}
+                    className="block px-4 py-2 rounded hover:bg-gray-200"
+                    activeProps={{ className: 'block px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600' }}
+                  >
+                    {table.table_name}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="fixed top-16 left-0 bottom-0 w-48 bg-gray-50 border-r border-gray-200">
-        <nav className="p-6 flex flex-col gap-4">
-          <Link
-            to="/"
-            className="hover:text-gray-600 text-lg"
-            activeProps={{
-              className: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>
-          <Link
-            to="/todos"
-            className="hover:text-gray-600 text-lg"
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            Todos
-          </Link>
-        </nav>
-      </div>
-
-      <div className="ml-48 mt-16 p-6">
-        <Outlet />
+        {/* Main content */}
+        <div className="flex-1 overflow-auto">
+          <Outlet />
+        </div>
       </div>
       <TanStackRouterDevtools position="bottom-right" />
     </QueryClientProvider>

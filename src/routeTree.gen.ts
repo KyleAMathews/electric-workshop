@@ -13,6 +13,7 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as TodosImport } from './routes/todos'
 import { Route as IndexImport } from './routes/index'
+import { Route as TableEditorTableNameImport } from './routes/table-editor/$tableName'
 
 // Create/Update Routes
 
@@ -25,6 +26,12 @@ const TodosRoute = TodosImport.update({
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const TableEditorTableNameRoute = TableEditorTableNameImport.update({
+  id: '/table-editor/$tableName',
+  path: '/table-editor/$tableName',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -46,6 +53,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TodosImport
       parentRoute: typeof rootRoute
     }
+    '/table-editor/$tableName': {
+      id: '/table-editor/$tableName'
+      path: '/table-editor/$tableName'
+      fullPath: '/table-editor/$tableName'
+      preLoaderRoute: typeof TableEditorTableNameImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -54,36 +68,41 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/todos': typeof TodosRoute
+  '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/todos': typeof TodosRoute
+  '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/todos': typeof TodosRoute
+  '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/todos'
+  fullPaths: '/' | '/todos' | '/table-editor/$tableName'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/todos'
-  id: '__root__' | '/' | '/todos'
+  to: '/' | '/todos' | '/table-editor/$tableName'
+  id: '__root__' | '/' | '/todos' | '/table-editor/$tableName'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   TodosRoute: typeof TodosRoute
+  TableEditorTableNameRoute: typeof TableEditorTableNameRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   TodosRoute: TodosRoute,
+  TableEditorTableNameRoute: TableEditorTableNameRoute,
 }
 
 export const routeTree = rootRoute
@@ -97,7 +116,8 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/todos"
+        "/todos",
+        "/table-editor/$tableName"
       ]
     },
     "/": {
@@ -105,6 +125,9 @@ export const routeTree = rootRoute
     },
     "/todos": {
       "filePath": "todos.tsx"
+    },
+    "/table-editor/$tableName": {
+      "filePath": "table-editor/$tableName.tsx"
     }
   }
 }

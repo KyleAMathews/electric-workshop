@@ -46,11 +46,35 @@ const UpdateTodoSchema = z
   })
   .openapi("UpdateTodo");
 
+const UpdateRowSchema = z
+  .object({})
+  .catchall(z.any())
+  .openapi("UpdateRow");
+
 const ErrorSchema = z
   .object({
     message: z.string(),
   })
   .openapi("Error");
+
+const TableMetadataSchema = z
+  .object({
+    table_name: z.string(),
+    columns: z.array(z.object({
+      column_name: z.string(),
+      data_type: z.string(),
+      is_nullable: z.boolean(),
+      column_default: z.string().nullable(),
+      is_identity: z.boolean(),
+    })),
+  })
+  .openapi("TableMetadata");
+
+const TablesResponseSchema = z
+  .object({
+    tables: z.array(TableMetadataSchema),
+  })
+  .openapi("TablesResponse");
 
 // Create OpenAPI Hono app
 export const app = new OpenAPIHono();
@@ -114,7 +138,6 @@ app.openapi(
   }
 );
 
-// Add PATCH endpoint for updating todo completion status
 app.openapi(
   createRoute({
     method: "patch",
@@ -190,6 +213,96 @@ app.openapi(
 
 app.openapi(
   createRoute({
+    method: "patch",
+    path: "/tables/:table/:id",
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: UpdateRowSchema,
+          },
+        },
+      },
+      params: z.object({
+        id: z.string().transform((val) => parseInt(val, 10)),
+        table: z.string(),
+      }),
+    },
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: z.object({
+              txid: z.number(),
+              row: z.any(),
+            }),
+          },
+        },
+        description: "Updated row",
+      },
+      400: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "Invalid request",
+      },
+      404: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "Row not found",
+      },
+    },
+    tags: ["tables"],
+  }),
+  async (c) => {
+    const sql = neon(c.env.DATABASE_URL)
+    const { id, table } = c.req.valid("param");
+    const updates = c.req.valid("json");
+
+    try {
+      // For single column updates, we can use the simpler template literal syntax
+      const [[column, value]] = Object.entries(updates);
+      
+      const [result] = await sql(`
+        WITH updated_row AS (
+          UPDATE ${table}
+          SET ${column} = $1
+          WHERE id = $2
+          RETURNING *
+        )
+        SELECT *, txid_current() as txid
+        FROM updated_row
+      `, [value, id]);
+
+      if (!result) {
+        return c.json({ message: "Row not found" }, 404);
+      }
+
+      const { txid, ...row } = result;
+      return c.json({ row, txid });
+    } catch (error) {
+      console.error('Update error:', error);
+      return c.json({ 
+        message: "Failed to update row", 
+        error: String(error),
+        debug: {
+          table,
+          column: Object.keys(updates)[0],
+          value: Object.values(updates)[0],
+          id
+        }
+      }, 400);
+    }
+  }
+);
+
+app.openapi(
+  createRoute({
     method: "delete",
     path: "/todos/{id}",
     request: {
@@ -237,6 +350,58 @@ app.openapi(
     }
   }
 )
+
+app.openapi(
+  createRoute({
+    method: "get",
+    path: "/tables",
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: TablesResponseSchema,
+          },
+        },
+        description: "List of tables and their schema",
+      },
+      500: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "Server error",
+      },
+    },
+    tags: ["tables"],
+  }),
+  async (c) => {
+    const sql = neon(c.env.DATABASE_URL);
+
+    try {
+      const tables = await sql`
+        SELECT 
+          t.table_name,
+          json_agg(json_build_object(
+            'column_name', c.column_name,
+            'data_type', c.data_type,
+            'is_nullable', c.is_nullable = 'YES',
+            'column_default', c.column_default,
+            'is_identity', c.is_identity = 'YES'
+          )) as columns
+        FROM information_schema.tables t
+        JOIN information_schema.columns c ON t.table_name = c.table_name
+        WHERE t.table_schema = 'public'
+          AND t.table_name NOT LIKE 'atdatabases%'
+        GROUP BY t.table_name
+      `;
+
+      return c.json({ tables });
+    } catch (error) {
+      return c.json({ message: "Failed to fetch tables" }, 500);
+    }
+  }
+);
 
 // Add OpenAPI documentation
 app.doc("/", {
