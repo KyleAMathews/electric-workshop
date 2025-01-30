@@ -6,6 +6,8 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 
+console.log({ api: import.meta.env.VITE_API })
+
 function RootComponent() {
   return (
     <>
@@ -16,7 +18,7 @@ function RootComponent() {
           </div>
         </div>
       </div>
-      
+
       <div className="fixed top-16 left-0 bottom-0 w-48 bg-gray-50 border-r border-gray-200">
         <nav className="p-6 flex flex-col gap-4">
           <Link
