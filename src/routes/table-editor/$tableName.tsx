@@ -29,7 +29,6 @@ function TableEditorComponent() {
   const [newRowData, setNewRowData] = React.useState<Record<string, any>>({})
 
   const { data: rows } = useShape({ url: `${API_ROOT}/shape/${tableName}` })
-  console.log({ rows })
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, column, value }: { id: any, column: string, value: any }) => {
@@ -61,9 +60,9 @@ function TableEditorComponent() {
 
   const parseValueByType = (value: string, column: Column) => {
     console.log('Parsing value:', { value, column_type: column.data_type })
-    
+
     if (value === '' && column.is_nullable) return null
-    
+
     switch (column.data_type) {
       case 'boolean':
         // Handle various boolean string representations
@@ -103,7 +102,7 @@ function TableEditorComponent() {
 
   const formatValueForDisplay = (value: any, column: Column) => {
     if (value === null || value === undefined) return ''
-    
+
     switch (column.data_type) {
       case 'json':
       case 'jsonb':
@@ -120,7 +119,7 @@ function TableEditorComponent() {
 
   const formatValueForEdit = (value: any, column: Column) => {
     if (value === null || value === undefined) return ''
-    
+
     switch (column.data_type) {
       case 'json':
       case 'jsonb':

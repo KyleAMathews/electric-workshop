@@ -65,9 +65,11 @@ function getUniqueUserSequences(userIds: string[]): string[] {
 }
 
 function TodosComponent() {
+  // TODO add useShape
+  const todos = []
+  const stream = {}
+
   const [newTodoText, setNewTodoText] = React.useState('')
-  const { data: todos, stream } = useShape<Todo>(todoShape)
-  const { data: users = [] } = useShape<User>(usersShape)
   console.log({ todos })
   const queryClient = useQueryClient()
   const storedUser = localStorage.getItem('user')
@@ -130,16 +132,7 @@ function TodosComponent() {
           }
         })
 
-        const response = await fetch(`${API_ROOT}/todos/${id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            completed,
-            user_id: user.id
-          }),
-        })
+        // TODO add fetch
 
         if (!response.ok) {
           throw new Error('Failed to update todo')
@@ -197,16 +190,7 @@ function TodosComponent() {
           }
         })
 
-        const response = await fetch(`${API_ROOT}/todos`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text,
-            user_id: user.id
-          }),
-        })
+        // TODO add fetch
 
         if (!response.ok) {
           throw new Error('Failed to create todo')
@@ -248,10 +232,7 @@ function TodosComponent() {
     scope: { id: 'todos' },
     mutationKey: ['delete-todo'],
     mutationFn: async (id: number) => {
-      console.log(`deleting`)
-      const response = await fetch(`${API_ROOT}/todos/${id}`, {
-        method: 'DELETE',
-      })
+      // TODO add fetch
 
       if (!response.ok) {
         throw new Error('Failed to delete todo')

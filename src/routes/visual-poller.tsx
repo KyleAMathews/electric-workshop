@@ -15,9 +15,11 @@ const pollVotesShape = {
 }
 
 function VisualPollerComponent() {
+  // TODO add useShape
+  const polls = []
+  const stream = {}
+  const votes = []
 
-  const { data: polls = [], stream } = useShape<Poll>(pollsShape)
-  const { data: votes = [] } = useShape<PollVote>(pollVotesShape)
   const storedUser = localStorage.getItem('user')
   const user = storedUser ? JSON.parse(storedUser) : null
   const [newPollName, setNewPollName] = React.useState('')
@@ -65,13 +67,7 @@ function VisualPollerComponent() {
           }
         })
 
-        const response = await fetch(`${API_ROOT}/polls`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ name, x, y }),
-        })
+        // TODO add fetch
 
         if (!response.ok) {
           throw new Error('Failed to create poll')
@@ -109,13 +105,7 @@ function VisualPollerComponent() {
           }
         })
 
-        const response = await fetch(`${API_ROOT}/polls/${pollId}/votes`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ user_id: user.id }),
-        })
+        // TODO add fetch
 
         if (!response.ok) {
           throw new Error('Failed to vote')
@@ -246,7 +236,7 @@ function VisualPollerComponent() {
 
   const PollComponent = ({ poll, votes, onVote }: { poll: Poll, votes: PollVote[], onVote: () => void }) => {
     const [showVotes, setShowVotes] = React.useState(false)
-    
+
     // Count votes per user
     const votesByUser = React.useMemo(() => {
       const counts = new Map<string, number>()
@@ -271,7 +261,7 @@ function VisualPollerComponent() {
         <div className="flex items-center space-x-1">
           <div className="text-xs text-gray-600">Votes: {votes.length}</div>
         </div>
-        
+
         {/* Vote details on hover */}
         {showVotes && votesByUser.size > 0 && (
           <div className="absolute left-1/2 top-full mt-1 -translate-x-1/2 bg-white border border-gray-200 rounded-md p-2 shadow-sm z-10">

@@ -191,8 +191,11 @@ const CheckboxButton = React.memo(function CheckboxButton({
 })
 
 function CheckboxGameComponent() {
-  const { data: checkboxes = [], stream } = useShape<CheckboxState>(checkboxShape)
-  const { data: users = [] } = useShape<User>(usersShape)
+  // TODO add useShape
+  const checkboxes = []
+  const stream = {}
+  const users = []
+
   const storedUser = localStorage.getItem('user')
   const user = storedUser ? JSON.parse(storedUser) : null
 
@@ -266,15 +269,7 @@ function CheckboxGameComponent() {
           }
         })
 
-        const response = await fetch(`${API_ROOT}/checkboxes/${id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user_id: user.id,
-          }),
-        })
+        // TODO add fetch
 
         if (!response.ok) {
           throw new Error('Failed to toggle checkbox')
