@@ -11,12 +11,19 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as VisualPollerImport } from './routes/visual-poller'
 import { Route as TodosImport } from './routes/todos'
 import { Route as CheckboxGameImport } from './routes/checkbox-game'
 import { Route as IndexImport } from './routes/index'
 import { Route as TableEditorTableNameImport } from './routes/table-editor/$tableName'
 
 // Create/Update Routes
+
+const VisualPollerRoute = VisualPollerImport.update({
+  id: '/visual-poller',
+  path: '/visual-poller',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const TodosRoute = TodosImport.update({
   id: '/todos',
@@ -67,6 +74,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TodosImport
       parentRoute: typeof rootRoute
     }
+    '/visual-poller': {
+      id: '/visual-poller'
+      path: '/visual-poller'
+      fullPath: '/visual-poller'
+      preLoaderRoute: typeof VisualPollerImport
+      parentRoute: typeof rootRoute
+    }
     '/table-editor/$tableName': {
       id: '/table-editor/$tableName'
       path: '/table-editor/$tableName'
@@ -83,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/checkbox-game': typeof CheckboxGameRoute
   '/todos': typeof TodosRoute
+  '/visual-poller': typeof VisualPollerRoute
   '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
 
@@ -90,6 +105,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checkbox-game': typeof CheckboxGameRoute
   '/todos': typeof TodosRoute
+  '/visual-poller': typeof VisualPollerRoute
   '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
 
@@ -98,19 +114,31 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/checkbox-game': typeof CheckboxGameRoute
   '/todos': typeof TodosRoute
+  '/visual-poller': typeof VisualPollerRoute
   '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/checkbox-game' | '/todos' | '/table-editor/$tableName'
+  fullPaths:
+    | '/'
+    | '/checkbox-game'
+    | '/todos'
+    | '/visual-poller'
+    | '/table-editor/$tableName'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/checkbox-game' | '/todos' | '/table-editor/$tableName'
+  to:
+    | '/'
+    | '/checkbox-game'
+    | '/todos'
+    | '/visual-poller'
+    | '/table-editor/$tableName'
   id:
     | '__root__'
     | '/'
     | '/checkbox-game'
     | '/todos'
+    | '/visual-poller'
     | '/table-editor/$tableName'
   fileRoutesById: FileRoutesById
 }
@@ -119,6 +147,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CheckboxGameRoute: typeof CheckboxGameRoute
   TodosRoute: typeof TodosRoute
+  VisualPollerRoute: typeof VisualPollerRoute
   TableEditorTableNameRoute: typeof TableEditorTableNameRoute
 }
 
@@ -126,6 +155,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CheckboxGameRoute: CheckboxGameRoute,
   TodosRoute: TodosRoute,
+  VisualPollerRoute: VisualPollerRoute,
   TableEditorTableNameRoute: TableEditorTableNameRoute,
 }
 
@@ -142,6 +172,7 @@ export const routeTree = rootRoute
         "/",
         "/checkbox-game",
         "/todos",
+        "/visual-poller",
         "/table-editor/$tableName"
       ]
     },
@@ -153,6 +184,9 @@ export const routeTree = rootRoute
     },
     "/todos": {
       "filePath": "todos.tsx"
+    },
+    "/visual-poller": {
+      "filePath": "visual-poller.tsx"
     },
     "/table-editor/$tableName": {
       "filePath": "table-editor/$tableName.tsx"

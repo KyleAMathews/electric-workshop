@@ -1,6 +1,7 @@
 import { z, createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { cors } from "hono/cors";
 import { neon } from "@neondatabase/serverless";
+import { type Poll, type PollVote } from "./types";
 
 function getOrigin(url: string): string | null {
   try {
@@ -116,6 +117,41 @@ const ToggleCheckboxSchema = z
   })
   .openapi("ToggleCheckbox");
 
+const PollSchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
+    x: z.number(),
+    y: z.number(),
+    created_at: z.string().datetime().optional(),
+    updated_at: z.string().datetime().optional(),
+  })
+  .openapi("Poll");
+
+const PollVoteSchema = z
+  .object({
+    id: z.number(),
+    poll_id: z.number(),
+    user_id: z.string(),
+    created_at: z.string().datetime().optional(),
+    updated_at: z.string().datetime().optional(),
+  })
+  .openapi("PollVote");
+
+const PollResponseSchema = z
+  .object({
+    txid: z.number(),
+    poll: PollSchema,
+  })
+  .openapi("PollResponse");
+
+const PollVoteResponseSchema = z
+  .object({
+    txid: z.number(),
+    vote: PollVoteSchema,
+  })
+  .openapi("PollVoteResponse");
+
 // Create OpenAPI Hono app
 export const app = new OpenAPIHono();
 
@@ -166,7 +202,7 @@ app.openapi(
           VALUES (${text}, ARRAY[${user_id}]::UUID[])
           RETURNING *
         )
-        SELECT *, txid_current() as txid
+        SELECT *, pg_current_xact_id()::text::bigint as txid
         FROM new_todo
       `;
 
@@ -242,7 +278,7 @@ app.openapi(
           WHERE id = $3
           RETURNING *
         )
-        SELECT *, txid_current() as txid
+        SELECT *, pg_current_xact_id()::text::bigint as txid
         FROM updated_row
       `,
         [value, user_id, id],
@@ -337,7 +373,7 @@ app.openapi(
           WHERE id = $2
           RETURNING *
         )
-        SELECT *, txid_current() as txid
+        SELECT *, pg_current_xact_id()::text::bigint as txid
         FROM updated_row
       `,
         [value, id],
@@ -401,7 +437,7 @@ app.openapi(
         WITH deleted_todo AS (
           DELETE FROM todos
           WHERE id = ${id}
-          RETURNING *, txid_current() as txid
+          RETURNING *, pg_current_xact_id()::text::bigint as txid
         )
         SELECT * FROM deleted_todo
       `;
@@ -635,6 +671,132 @@ app.openapi(
   },
 );
 
+app.openapi(
+  createRoute({
+    method: "post",
+    path: "/polls",
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: z.object({
+              name: z.string(),
+              x: z.number(),
+              y: z.number(),
+            }),
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: PollResponseSchema,
+          },
+        },
+        description: "Created poll",
+      },
+      400: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "Invalid request",
+      },
+    },
+    tags: ["polls"],
+  }),
+  async (c) => {
+    const sql = neon(c.env.DATABASE_URL);
+    const { name, x, y } = c.req.valid("json");
+
+    try {
+      const [{ txid, ...poll }] = await sql`
+        WITH inserted_poll AS (
+          INSERT INTO polls (name, x, y)
+          VALUES (${name}, ${x}, ${y})
+          RETURNING *
+        )
+        SELECT p.*, pg_current_xact_id()::text::bigint as txid
+        FROM inserted_poll p
+      `;
+
+      return c.json({ txid: Number(txid), poll });
+    } catch (error) {
+      return c.json(
+        { message: "Failed to create poll", error: String(error) },
+        400,
+      );
+    }
+  },
+);
+
+app.openapi(
+  createRoute({
+    method: "post",
+    path: "/polls/:id/votes",
+    request: {
+      params: z.object({
+        id: z.string().transform((val) => parseInt(val, 10)),
+      }),
+      body: {
+        content: {
+          "application/json": {
+            schema: z.object({
+              user_id: z.string().uuid(),
+            }),
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: PollVoteResponseSchema,
+          },
+        },
+        description: "Created poll vote",
+      },
+      400: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "Invalid request",
+      },
+    },
+    tags: ["polls"],
+  }),
+  async (c) => {
+    const sql = neon(c.env.DATABASE_URL);
+    const { id } = c.req.valid("param");
+    const { user_id } = c.req.valid("json");
+
+    try {
+      const [{ txid, ...vote }] = await sql`
+        WITH inserted_vote AS (
+          INSERT INTO poll_votes (poll_id, user_id)
+          VALUES (${id}, ${user_id}::uuid)
+          RETURNING *
+        )
+        SELECT v.*, pg_current_xact_id()::text::bigint as txid
+        FROM inserted_vote v
+      `;
+
+      return c.json({ txid: Number(txid), vote });
+    } catch (error) {
+      return c.json(
+        { message: "Failed to create poll vote", error: String(error) },
+        400,
+      );
+    }
+  },
+);
+
 // Add OpenAPI documentation
 app.doc("/", {
   info: {
@@ -656,6 +818,14 @@ const shapesToProxy = [
   {
     table: `checkboxes`,
     description: `All the checkboxes`,
+  },
+  {
+    table: `polls`,
+    description: `All the polls`,
+  },
+  {
+    table: `poll_votes`,
+    description: `All the poll votes`,
   },
 ] as const;
 

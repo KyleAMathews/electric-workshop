@@ -353,7 +353,7 @@ function CheckboxGameComponent() {
   // If no user is set, redirect to home
   if (!user) {
     return (
-      <div className="max-w-2xl">
+      <div className="max-w-2xl p-6">
         <h3 className="text-xl mb-4">Please set your name first</h3>
         <a href="/" className="text-blue-500 hover:text-blue-600">Go to home page</a>
       </div>
@@ -361,7 +361,7 @@ function CheckboxGameComponent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4">
+    <div className="max-w-7xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">1000 Checkbox Game</h1>
       <p className="mb-8 text-gray-600">
         A multiplayer game where players compete to create connected groups of checkboxes.

@@ -339,7 +339,7 @@ function TodosComponent() {
     });
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl p-6">
       <h1 className="text-2xl font-bold mb-6">Todo List</h1>
 
       <form onSubmit={addTodo} className="mb-6 flex gap-4">

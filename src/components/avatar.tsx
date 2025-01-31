@@ -33,29 +33,38 @@ const usersShape = {
 
 interface AvatarProps {
   userId: string
-  size?: number
+  size?: 'xs' | 'sm' | 'md' | 'lg' | number
 }
 
-export const Avatar = React.memo(function Avatar({ userId, size = 32 }: AvatarProps) {
+export const Avatar = React.memo(function Avatar({ userId, size = 'md' }: AvatarProps) {
   const { data: users = [] } = useShape<User>(usersShape)
   const user = users.find(u => u.id === userId)
 
   if (!user) return null
 
   const backgroundColor = getColorForUUID(userId)
-  const fontSize = Math.max(Math.floor(size / 2), 8)
+  
+  // Convert size prop to pixels
+  const sizeInPx = typeof size === 'number' ? size : {
+    'xs': 20,
+    'sm': 24,
+    'md': 32,
+    'lg': 40
+  }[size]
+
+  const fontSize = Math.max(Math.floor(sizeInPx / 2), 8)
 
   return (
     <div
       className="rounded-full text-white flex items-center justify-center font-medium"
       style={{
-        width: size,
-        height: size,
         backgroundColor,
-        fontSize,
+        width: sizeInPx,
+        height: sizeInPx,
+        fontSize: `${fontSize}px`,
       }}
     >
-      {user.name[0].toUpperCase()}
+      {user.name.charAt(0).toUpperCase()}
     </div>
   )
 }, (prevProps, nextProps) => {

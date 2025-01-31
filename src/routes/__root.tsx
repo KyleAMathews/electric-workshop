@@ -61,6 +61,13 @@ function RootComponent() {
               >
                 Checkbox Game
               </Link>
+              <Link
+                to="/visual-poller"
+                className="block px-4 py-2 rounded hover:bg-gray-200"
+                activeProps={{ className: 'block px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600' }}
+              >
+                Visual Poller
+              </Link>
 
               <div className="mt-6">
                 <h3 className="px-4 text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">
