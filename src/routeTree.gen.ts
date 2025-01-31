@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as TodosImport } from './routes/todos'
+import { Route as CheckboxGameImport } from './routes/checkbox-game'
 import { Route as IndexImport } from './routes/index'
 import { Route as TableEditorTableNameImport } from './routes/table-editor/$tableName'
 
@@ -20,6 +21,12 @@ import { Route as TableEditorTableNameImport } from './routes/table-editor/$tabl
 const TodosRoute = TodosImport.update({
   id: '/todos',
   path: '/todos',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const CheckboxGameRoute = CheckboxGameImport.update({
+  id: '/checkbox-game',
+  path: '/checkbox-game',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -46,6 +53,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/checkbox-game': {
+      id: '/checkbox-game'
+      path: '/checkbox-game'
+      fullPath: '/checkbox-game'
+      preLoaderRoute: typeof CheckboxGameImport
+      parentRoute: typeof rootRoute
+    }
     '/todos': {
       id: '/todos'
       path: '/todos'
@@ -67,12 +81,14 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/checkbox-game': typeof CheckboxGameRoute
   '/todos': typeof TodosRoute
   '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/checkbox-game': typeof CheckboxGameRoute
   '/todos': typeof TodosRoute
   '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
@@ -80,27 +96,35 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/checkbox-game': typeof CheckboxGameRoute
   '/todos': typeof TodosRoute
   '/table-editor/$tableName': typeof TableEditorTableNameRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/todos' | '/table-editor/$tableName'
+  fullPaths: '/' | '/checkbox-game' | '/todos' | '/table-editor/$tableName'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/todos' | '/table-editor/$tableName'
-  id: '__root__' | '/' | '/todos' | '/table-editor/$tableName'
+  to: '/' | '/checkbox-game' | '/todos' | '/table-editor/$tableName'
+  id:
+    | '__root__'
+    | '/'
+    | '/checkbox-game'
+    | '/todos'
+    | '/table-editor/$tableName'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CheckboxGameRoute: typeof CheckboxGameRoute
   TodosRoute: typeof TodosRoute
   TableEditorTableNameRoute: typeof TableEditorTableNameRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CheckboxGameRoute: CheckboxGameRoute,
   TodosRoute: TodosRoute,
   TableEditorTableNameRoute: TableEditorTableNameRoute,
 }
@@ -116,12 +140,16 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/checkbox-game",
         "/todos",
         "/table-editor/$tableName"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/checkbox-game": {
+      "filePath": "checkbox-game.tsx"
     },
     "/todos": {
       "filePath": "todos.tsx"

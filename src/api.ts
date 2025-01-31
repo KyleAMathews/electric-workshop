@@ -100,6 +100,22 @@ const UpdateUserSchema = z
   })
   .openapi("UpdateUser");
 
+const CheckboxSchema = z
+  .object({
+    id: z.number(),
+    checked: z.boolean(),
+    user_id: z.string().uuid().nullable(),
+    created_at: z.string().datetime(),
+    updated_at: z.string().datetime(),
+  })
+  .openapi("Checkbox");
+
+const ToggleCheckboxSchema = z
+  .object({
+    user_id: z.string().uuid(),
+  })
+  .openapi("ToggleCheckbox");
+
 // Create OpenAPI Hono app
 export const app = new OpenAPIHono();
 
@@ -572,6 +588,53 @@ app.openapi(
   },
 );
 
+app.openapi(
+  createRoute({
+    method: "patch",
+    path: "/checkboxes/:id",
+    request: {
+      params: z.object({
+        id: z.string(),
+      }),
+      body: {
+        content: {
+          "application/json": {
+            schema: ToggleCheckboxSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: z.object({
+              txid: z.number(),
+            }),
+          },
+        },
+        description: "Success",
+      },
+    },
+  }),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const { user_id } = c.req.valid("json");
+    const sql = neon(c.env.DATABASE_URL!);
+
+    const result = await sql`
+      WITH toggled AS (
+        SELECT * FROM toggle_checkbox(${parseInt(id)}, ${user_id}::uuid)
+      )
+      SELECT 
+        toggled.txid
+      FROM toggled;
+    `;
+
+    return c.json(result[0]);
+  },
+);
+
 // Add OpenAPI documentation
 app.doc("/", {
   info: {
@@ -589,6 +652,10 @@ const shapesToProxy = [
   {
     table: `users`,
     description: `All the users`,
+  },
+  {
+    table: `checkboxes`,
+    description: `All the checkboxes`,
   },
 ] as const;
 

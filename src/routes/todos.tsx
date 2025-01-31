@@ -2,6 +2,7 @@ import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useShape, preloadShape } from "@electric-sql/react"
 import { useMutation, useQueryClient, useMutationState } from '@tanstack/react-query'
+import { Avatar } from '../components/avatar'
 const API_ROOT = import.meta.env.VITE_API
 
 interface User {
@@ -61,48 +62,6 @@ function getUniqueUserSequences(userIds: string[]): string[] {
   }
 
   return result;
-}
-
-// D3's Category10 colors
-const schemeCategory10 = [
-  "#1f77b4",
-  "#ff7f0e",
-  "#2ca02c",
-  "#d62728",
-  "#9467bd",
-  "#8c564b",
-  "#e377c2",
-  "#7f7f7f",
-  "#bcbd22",
-  "#17becf",
-];
-
-// Hash function for UUIDs
-function hashUUID(uuid: string): number {
-  return [...uuid].reduce((acc, char) => {
-    return ((acc << 5) - acc) + char.charCodeAt(0) | 0;
-  }, 0);
-}
-
-function getColorForUUID(uuid: string): string {
-  const hash = Math.abs(hashUUID(uuid));
-  return schemeCategory10[hash % schemeCategory10.length];
-}
-
-function UserAvatar({ userId, users }: { userId: string, users: User[] }) {
-  const user = users.find(u => u.id === userId);
-  if (!user) return null;
-
-  const backgroundColor = getColorForUUID(userId);
-
-  return (
-    <div
-      className="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-medium"
-      style={{ backgroundColor }}
-    >
-      {user.name[0].toUpperCase()}
-    </div>
-  );
 }
 
 function TodosComponent() {
@@ -417,7 +376,7 @@ function TodosComponent() {
             <div className="flex -space-x-2">
               {getUniqueUserSequences(todo.user_ids || []).map((userId, i) => (
                 <div key={i} className="relative">
-                  <UserAvatar userId={userId} users={users} />
+                  <Avatar userId={userId} size={32} />
                 </div>
               ))}
             </div>

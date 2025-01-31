@@ -38,7 +38,7 @@ function RootComponent() {
         <div className="w-64 bg-gray-100 border-r">
           <div className="p-4">
             <h2 className="text-lg font-semibold mb-4">Navigation</h2>
-            
+
             <div className="space-y-2">
               <Link
                 to="/"
@@ -53,6 +53,13 @@ function RootComponent() {
                 activeProps={{ className: 'block px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600' }}
               >
                 Todos
+              </Link>
+              <Link
+                to="/checkbox-game"
+                className="block px-4 py-2 rounded hover:bg-gray-200"
+                activeProps={{ className: 'block px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600' }}
+              >
+                Checkbox Game
               </Link>
 
               <div className="mt-6">
