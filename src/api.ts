@@ -1,6 +1,6 @@
 import { z, createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { cors } from "hono/cors";
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 function getOrigin(url: string): string | null {
   try {
@@ -37,19 +37,19 @@ const TodoResponseSchema = z
 const CreateTodoSchema = z
   .object({
     text: z.string().min(1),
+    user_id: z.string().uuid(),
   })
   .openapi("CreateTodo");
 
 const UpdateTodoSchema = z
   .object({
-    completed: z.boolean(),
+    completed: z.boolean().optional(),
+    text: z.string().min(1).optional(),
+    user_id: z.string().uuid(),
   })
   .openapi("UpdateTodo");
 
-const UpdateRowSchema = z
-  .object({})
-  .catchall(z.any())
-  .openapi("UpdateRow");
+const UpdateRowSchema = z.object({}).catchall(z.any()).openapi("UpdateRow");
 
 const ErrorSchema = z
   .object({
@@ -60,13 +60,15 @@ const ErrorSchema = z
 const TableMetadataSchema = z
   .object({
     table_name: z.string(),
-    columns: z.array(z.object({
-      column_name: z.string(),
-      data_type: z.string(),
-      is_nullable: z.boolean(),
-      column_default: z.string().nullable(),
-      is_identity: z.boolean(),
-    })),
+    columns: z.array(
+      z.object({
+        column_name: z.string(),
+        data_type: z.string(),
+        is_nullable: z.boolean(),
+        column_default: z.string().nullable(),
+        is_identity: z.boolean(),
+      }),
+    ),
   })
   .openapi("TableMetadata");
 
@@ -75,6 +77,28 @@ const TablesResponseSchema = z
     tables: z.array(TableMetadataSchema),
   })
   .openapi("TablesResponse");
+
+const UserSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string(),
+    created_at: z.string().datetime(),
+    updated_at: z.string().datetime(),
+  })
+  .openapi("User");
+
+const CreateUserSchema = z
+  .object({
+    name: z.string().min(1),
+  })
+  .openapi("CreateUser");
+
+const UpdateUserSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string().min(1),
+  })
+  .openapi("UpdateUser");
 
 // Create OpenAPI Hono app
 export const app = new OpenAPIHono();
@@ -116,14 +140,14 @@ app.openapi(
     tags: ["todos"],
   }),
   async (c) => {
-    const sql = neon(c.env.DATABASE_URL)
-    const { text } = c.req.valid("json");
+    const sql = neon(c.env.DATABASE_URL);
+    const { text, user_id } = c.req.valid("json");
 
     try {
       const [result] = await sql`
         WITH new_todo AS (
-          INSERT INTO todos (text)
-          VALUES (${text})
+          INSERT INTO todos (text, user_ids)
+          VALUES (${text}, ARRAY[${user_id}]::UUID[])
           RETURNING *
         )
         SELECT *, txid_current() as txid
@@ -133,9 +157,12 @@ app.openapi(
       const { txid, ...todo } = result;
       return c.json({ todo, txid });
     } catch (error) {
-      return c.json({ message: "Failed to create todo" }, 400);
+      return c.json(
+        { message: "Failed to create todo", error: String(error) },
+        400,
+      );
     }
-  }
+  },
 );
 
 app.openapi(
@@ -183,21 +210,27 @@ app.openapi(
     tags: ["todos"],
   }),
   async (c) => {
-    const sql = neon(c.env.DATABASE_URL)
+    const sql = neon(c.env.DATABASE_URL);
     const { id } = c.req.valid("param");
-    const { completed } = c.req.valid("json");
+    const { user_id, ...updates } = c.req.valid("json");
 
     try {
-      const [result] = await sql`
-        WITH updated_todo AS (
+      const [[column, value]] = Object.entries(updates);
+
+      const [result] = await sql(
+        `
+        WITH updated_row AS (
           UPDATE todos
-          SET completed = ${completed}
-          WHERE id = ${id}
+          SET ${column} = $1,
+              user_ids = array_append(user_ids, $2::UUID)
+          WHERE id = $3
           RETURNING *
         )
         SELECT *, txid_current() as txid
-        FROM updated_todo
-      `;
+        FROM updated_row
+      `,
+        [value, user_id, id],
+      );
 
       if (!result) {
         return c.json({ message: "Todo not found" }, 404);
@@ -206,9 +239,21 @@ app.openapi(
       const { txid, ...todo } = result;
       return c.json({ todo, txid });
     } catch (error) {
-      return c.json({ message: "Failed to update todo" }, 400);
+      console.error("Update error:", error);
+      return c.json(
+        {
+          message: "Failed to update todo",
+          error: String(error),
+          debug: {
+            id,
+            updates,
+            user_id,
+          },
+        },
+        400,
+      );
     }
-  }
+  },
 );
 
 app.openapi(
@@ -260,15 +305,16 @@ app.openapi(
     tags: ["tables"],
   }),
   async (c) => {
-    const sql = neon(c.env.DATABASE_URL)
+    const sql = neon(c.env.DATABASE_URL);
     const { id, table } = c.req.valid("param");
     const updates = c.req.valid("json");
 
     try {
       // For single column updates, we can use the simpler template literal syntax
       const [[column, value]] = Object.entries(updates);
-      
-      const [result] = await sql(`
+
+      const [result] = await sql(
+        `
         WITH updated_row AS (
           UPDATE ${table}
           SET ${column} = $1
@@ -277,7 +323,9 @@ app.openapi(
         )
         SELECT *, txid_current() as txid
         FROM updated_row
-      `, [value, id]);
+      `,
+        [value, id],
+      );
 
       if (!result) {
         return c.json({ message: "Row not found" }, 404);
@@ -286,19 +334,22 @@ app.openapi(
       const { txid, ...row } = result;
       return c.json({ row, txid });
     } catch (error) {
-      console.error('Update error:', error);
-      return c.json({ 
-        message: "Failed to update row", 
-        error: String(error),
-        debug: {
-          table,
-          column: Object.keys(updates)[0],
-          value: Object.values(updates)[0],
-          id
-        }
-      }, 400);
+      console.error("Update error:", error);
+      return c.json(
+        {
+          message: "Failed to update row",
+          error: String(error),
+          debug: {
+            table,
+            column: Object.keys(updates)[0],
+            value: Object.values(updates)[0],
+            id,
+          },
+        },
+        400,
+      );
     }
-  }
+  },
 );
 
 app.openapi(
@@ -326,8 +377,8 @@ app.openapi(
     tags: ["todos"],
   }),
   async (c) => {
-    const sql = neon(c.env.DATABASE_URL)
-    const { id } = c.req.valid("param")
+    const sql = neon(c.env.DATABASE_URL);
+    const { id } = c.req.valid("param");
 
     try {
       const [result] = await sql`
@@ -337,19 +388,19 @@ app.openapi(
           RETURNING *, txid_current() as txid
         )
         SELECT * FROM deleted_todo
-      `
+      `;
 
       if (!result) {
-        return c.json({ message: "Todo not found" }, 404)
+        return c.json({ message: "Todo not found" }, 404);
       }
 
-      const { txid } = result
-      return c.json({ txid })
+      const { txid } = result;
+      return c.json({ txid });
     } catch (error) {
-      return c.json({ message: "Failed to delete todo" }, 400)
+      return c.json({ message: "Failed to delete todo" }, 400);
     }
-  }
-)
+  },
+);
 
 app.openapi(
   createRoute({
@@ -400,7 +451,125 @@ app.openapi(
     } catch (error) {
       return c.json({ message: "Failed to fetch tables" }, 500);
     }
-  }
+  },
+);
+
+app.openapi(
+  createRoute({
+    method: "post",
+    path: "/users",
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: CreateUserSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: UserSchema,
+          },
+        },
+        description: "Created user",
+      },
+      400: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "Invalid request",
+      },
+    },
+    tags: ["users"],
+  }),
+  async (c) => {
+    const sql = neon(c.env.DATABASE_URL);
+    const { name } = c.req.valid("json");
+
+    try {
+      const [user] = await sql`
+        INSERT INTO users (name)
+        VALUES (${name})
+        RETURNING *
+      `;
+
+      return c.json(user);
+    } catch (error) {
+      return c.json(
+        { message: "Failed to create user", error: String(error) },
+        400,
+      );
+    }
+  },
+);
+
+app.openapi(
+  createRoute({
+    method: "patch",
+    path: "/users",
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: UpdateUserSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: UserSchema,
+          },
+        },
+        description: "Updated user",
+      },
+      400: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "Invalid request",
+      },
+      404: {
+        content: {
+          "application/json": {
+            schema: ErrorSchema,
+          },
+        },
+        description: "User not found",
+      },
+    },
+    tags: ["users"],
+  }),
+  async (c) => {
+    const sql = neon(c.env.DATABASE_URL);
+    const { id, name } = c.req.valid("json");
+
+    try {
+      const [user] = await sql`
+        UPDATE users
+        SET name = ${name}
+        WHERE id = ${id}
+        RETURNING *
+      `;
+
+      if (!user) {
+        return c.json({ message: "User not found" }, 404);
+      }
+
+      return c.json(user, 200);
+    } catch (error) {
+      return c.json({ message: "Failed to update user" }, 400);
+    }
+  },
 );
 
 // Add OpenAPI documentation
@@ -416,6 +585,10 @@ const shapesToProxy = [
   {
     table: `todos`,
     description: `All the todos`,
+  },
+  {
+    table: `users`,
+    description: `All the users`,
   },
 ] as const;
 
@@ -462,7 +635,7 @@ async function proxyToAdminElectric(
   const requestClone = new Request(request);
   const headersClone = new Headers(requestClone.headers);
 
-  console.log(`Fetching shape from Admin Electric: ${originUrl.toString()}`);
+  console.log(`Fetching shape from Electric: ${originUrl.toString()}`);
 
   const response = await fetch(originUrl.toString(), {
     headers: headersClone,
